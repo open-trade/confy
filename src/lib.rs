@@ -269,7 +269,7 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
 
     let s;
     #[cfg(feature = "toml_conf")] {
-        s = toml::to_string_pretty(&cfg).map_err(ConfyError::SerializeTomlError)?;
+        s = toml::to_string(&cfg).map_err(ConfyError::SerializeTomlError)?;
     }
    #[cfg(feature = "yaml_conf")] {
         s = serde_yaml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
