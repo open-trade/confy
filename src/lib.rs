@@ -257,11 +257,14 @@ pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
 ///
 /// [`store`]: fn.store.html
 pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), ConfyError> {
+    let path = path.as_ref();
+    let mut path_tmp = path.to_path_buf();
+    path_tmp.set_extension(".tmp");
     let mut f = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
-        .open(path)
+        .open(&path_tmp)
         .map_err(ConfyError::OpenConfigurationFileError)?;
 
     let s;
@@ -273,6 +276,8 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     }
 
     f.write_all(s.as_bytes())
+        .map_err(ConfyError::WriteConfigurationFileError)?;
+    std::fs::rename(path_tmp, path)
         .map_err(ConfyError::WriteConfigurationFileError)?;
     Ok(())
 }
