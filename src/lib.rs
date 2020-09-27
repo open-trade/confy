@@ -259,7 +259,15 @@ pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
 pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), ConfyError> {
     let path = path.as_ref();
     let mut path_tmp = path.to_path_buf();
-    path_tmp.set_extension(".tmp");
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let mut i = 0;
+    loop {
+        i += 1;
+        path_tmp.set_extension(SystemTime::now().duration_since(UNIX_EPOCH).map(|x| x.as_nanos()).unwrap_or(i).to_string());
+        if !path_tmp.exists() {
+            break;
+        }
+    }
     let mut f = OpenOptions::new()
         .write(true)
         .create(true)
