@@ -270,7 +270,7 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     let mut i = 0;
     loop {
         i += 1;
-        path_tmp.set_extension(SystemTime::now().duration_since(UNIX_EPOCH).map(|x| x.as_nanos()).unwrap_or(i).to_string());
+        path_tmp.set_extension(format!("{}_{:?}_{}", std::process::id(), std::thread::current().id(), SystemTime::now().duration_since(UNIX_EPOCH).map(|x| x.as_nanos()).unwrap_or(i)));
         if !path_tmp.exists() {
             break;
         }
@@ -284,7 +284,7 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
 
     f.write_all(s.as_bytes())
         .map_err(ConfyError::WriteConfigurationFileError)?;
-    f.flush()?;
+    f.flush().map_err(ConfyError::WriteConfigurationFileError)?;
     drop(f);
     std::fs::rename(path_tmp, path)
         .map_err(ConfyError::WriteConfigurationFileError)?;
