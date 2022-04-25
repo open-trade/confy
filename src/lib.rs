@@ -265,14 +265,28 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
         s = serde_yaml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
     }
 
+    let mut path_tmp = path.to_path_buf();
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let mut i = 0;
+    loop {
+        i += 1;
+        path_tmp.set_extension(SystemTime::now().duration_since(UNIX_EPOCH).map(|x| x.as_nanos()).unwrap_or(i).to_string());
+        if !path_tmp.exists() {
+            break;
+        }
+    }
     let mut f = OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
-        .open(path)
+        .open(&path_tmp)
         .map_err(ConfyError::OpenConfigurationFileError)?;
 
     f.write_all(s.as_bytes())
+        .map_err(ConfyError::WriteConfigurationFileError)?;
+    f.flush()?;
+    drop(f);
+    std::fs::rename(path_tmp, path)
         .map_err(ConfyError::WriteConfigurationFileError)?;
     Ok(())
 }
