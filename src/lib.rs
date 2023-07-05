@@ -67,7 +67,7 @@ use utils::*;
 use directories_next::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::{self, File, OpenOptions};
-use std::io::{ErrorKind::NotFound, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -192,14 +192,6 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
                 cfg_data.map_err(ConfyError::BadYamlData)
             }
         }
-        Err(ref e) if e.kind() == NotFound => {
-            if let Some(parent) = path.as_ref().parent() {
-                fs::create_dir_all(parent).map_err(ConfyError::DirectoryCreationFailed)?;
-            }
-            let cfg = T::default();
-            store_path(path, &cfg)?;
-            Ok(cfg)
-        }
         Err(e) => Err(ConfyError::GeneralLoadError(e)),
     }
 }
@@ -270,7 +262,15 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     let mut i = 0;
     loop {
         i += 1;
-        path_tmp.set_extension(format!("{}_{:?}_{}", std::process::id(), std::thread::current().id(), SystemTime::now().duration_since(UNIX_EPOCH).map(|x| x.as_nanos()).unwrap_or(i)));
+        path_tmp.set_extension(format!(
+            "{}_{:?}_{}",
+            std::process::id(),
+            std::thread::current().id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|x| x.as_nanos())
+                .unwrap_or(i)
+        ));
         if !path_tmp.exists() {
             break;
         }
@@ -286,8 +286,7 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
         .map_err(ConfyError::WriteConfigurationFileError)?;
     f.flush().map_err(ConfyError::WriteConfigurationFileError)?;
     drop(f);
-    std::fs::rename(path_tmp, path)
-        .map_err(ConfyError::WriteConfigurationFileError)?;
+    std::fs::rename(path_tmp, path).map_err(ConfyError::WriteConfigurationFileError)?;
     Ok(())
 }
 
